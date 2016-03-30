@@ -4,9 +4,9 @@
 
 /*
  Requirements:
- You require different types of objects be added to a collection for polymorphic invokation. Some of the objects may be 
- stack-allocated and some heap-allocated.  You want memory to be managed automatically via RAII whilst observing ownership 
- rules - i.e. delete owned objects and omit deletion of non-owned ones, e.g. stack-allocated objects.
+ You need the ability to add different types of objects to a common container for polymorphic access. Some of the objects 
+ may be stack-allocated and some heap-allocated.  You want memory to be managed automatically via RAII whilst observing 
+ ownership rules - i.e. delete owned objects and omit deletion of non-owned ones, e.g. stack-allocated objects.
 
  Solution:
  C++11 std::unique_ptr<> with custom deleters can be used to achieve this, as follows.

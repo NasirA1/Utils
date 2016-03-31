@@ -4,12 +4,12 @@
 
 /*
  Requirements:
- You need the ability to add different types of objects to a common container for polymorphic access. Some of the objects 
- may be stack-allocated and some heap-allocated.  You want memory to be managed automatically via RAII whilst observing 
- ownership rules - i.e. delete owned objects and omit deletion of non-owned ones, e.g. stack-allocated objects.
+  You need the ability to add different types of objects to a common container for polymorphic access. Some of the objects
+  may be stack-allocated and some heap-allocated.  You want memory to be managed automatically via RAII whilst observing
+  ownership rules - i.e. delete owned objects and omit deletion of non-owned ones, e.g. stack-allocated objects.
 
  Solution:
- C++11 std::unique_ptr<> with custom deleters can be used to achieve this, as follows.
+  C++11 std::unique_ptr<> with custom deleters can be used to achieve this, as follows.
 */
 
 
@@ -23,12 +23,14 @@ struct Animal
   using ptr = std::unique_ptr<Animal, Deleter>;
 };
 
+
 //Custom deleter lambdas
 namespace AnimalDeleters
 {
   auto Delete = [](Animal* p) { delete p; };
   auto NoDelete = [](Animal*) {};
 }
+
 
 //Concrete type1 - Cat
 struct Cat : public Animal
@@ -43,6 +45,7 @@ struct Cat : public Animal
     std::cout << "Cat destroyed" << std::endl;
   }
 };
+
 
 //Concrete type2 - Dog
 struct Dog : public Animal
@@ -68,10 +71,22 @@ struct Zoo
   }
 
   /* Owner - delete will be called on the animal being created/added */
-  template<class AnimalType>
-  void AddAnimal()
+  /* if successful, a pointer to the created object will be returned */
+  /* otherwise, nullptr will be returned */
+  template<class ConcreteAnimal>
+  Animal* AddAnimal()
   {
-    animals.push_back(Animal::ptr(new AnimalType, AnimalDeleters::Delete));
+    try 
+    {
+      Animal::ptr newAnimal(new ConcreteAnimal, AnimalDeleters::Delete);
+      Animal* p = newAnimal.get();
+      if(p) animals.push_back(std::move(newAnimal));
+      return p;
+    }
+    catch (...)
+    {
+      return nullptr;
+    }
   }
 
   //Polymorphic calls on all animals
@@ -97,14 +112,17 @@ int main()
     Dog dog;
     zoo.AddAnimal(cat);
     zoo.AddAnimal(dog);
+    cat.Speak();
+    dog.Speak();
 
     //Heap allocated animals
-    zoo.AddAnimal<Cat>();
-    zoo.AddAnimal<Dog>();
+    Animal* cat2 = zoo.AddAnimal<Cat>();
+    Animal* dog2 = zoo.AddAnimal<Dog>();
+    if(cat2) cat2->Speak();
+    if(dog2) dog2->Speak();
 
     //Polymorphic call
     zoo.SpeakAll();
-
   } //End of scope. All animals will be automatically destroyed after this point
 
 

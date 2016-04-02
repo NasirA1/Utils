@@ -65,7 +65,7 @@ struct Dog : public Animal
 struct Zoo
 {
   /* Non-owner - delete will not be called on the animal being added */
-  void AddAnimal(Animal& animal)
+  void AddAnimal(const Animal& animal)
   {
     animals.push_back(Animal::ptr(&animal, AnimalDeleters::NoDelete));
   }

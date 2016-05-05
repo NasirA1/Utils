@@ -49,18 +49,15 @@ namespace good_code
   struct Base
   {
     //WARNING: OnConstruct is called BEFORE the derived class's construction
+    //WARNING: OnConstruct is called BEFORE the derived class's construction
     Base()
     {
-      static_cast<DERIVED&>(*this).OnConstruct(
-        static_cast<DERIVED&>(*this)
-        );
+      DERIVED::OnConstruct(static_cast<DERIVED&>(*this));
     }
 
     ~Base()
     {
-      static_cast<DERIVED&>(*this).OnDestruct(
-        static_cast<DERIVED&>(*this)
-        );
+      DERIVED::OnDestruct(static_cast<DERIVED&>(*this));
     }
   };
 

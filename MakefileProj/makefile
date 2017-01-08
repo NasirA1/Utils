@@ -39,16 +39,31 @@ $(info )
 
 
 
-.PHONY: default all clean
+.PHONY: default dirs all clean
 .PRECIOUS: $(BINDIR)/$(TARGET) $(OBJECTS)
 
 
-all: default
-	
 
-default: $(BINDIR)/$(TARGET)
+default: dirs $(BINDIR)/$(TARGET)
 	$(info )
 	$(info Build Complete.)
+
+
+
+#returns empty string if BINDIR and OBJDIR don't exist
+dirs_exist := $(addsuffix ,$(wildcard $(BINDIR)) $(wildcard $(OBJDIR)))
+
+dirs:
+ifeq ($(dirs_exist),)
+	@echo "Creating working directories..."
+endif
+	@mkdir -p $(BINDIR)
+	@mkdir -p $(OBJDIR)
+
+
+
+all: default
+
 
 
 HEADERS = $(wildcard $(INCDIR)/*.h)
@@ -95,4 +110,4 @@ else
 	@-rm -f $(OBJDIR)/*.o
 	@-rm -f $(BINDIR)/$(TARGET)
 endif
-	@echo Done!
+

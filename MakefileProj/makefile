@@ -57,8 +57,13 @@ dirs:
 ifeq ($(dirs_exist),)
 	@echo "Creating working directories..."
 endif
+ifeq ($(OS),Windows_NT)
+	@if not exist $(BINDIR) mkdir $(BINDIR)
+	@if not exist $(OBJDIR) mkdir $(OBJDIR)
+else
 	@mkdir -p $(BINDIR)
 	@mkdir -p $(OBJDIR)
+endif
 
 
 

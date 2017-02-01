@@ -64,7 +64,7 @@ namespace xml
 
 	string getTokenName(const TokenType id)
 	{
-		return tokenNames[(int)id];
+		return tokenNames[static_cast<int>(id)];
 	}
 
 
@@ -109,7 +109,7 @@ namespace xml
 		void consume()
 		{
 			p++;
-			if ((unsigned int)p >= input.length()) c = EOF;
+			if (static_cast<size_t>(p) >= input.length()) c = EOF;
 			else c = input[p];
 		}
 
@@ -172,7 +172,8 @@ namespace xml
 					return token(TOKEN_LTHAN, "<");
 				case '>':
 					consume();
-					valuemode = true;
+					if(p != input.length() - 1)
+						valuemode = true;
 					return token(TOKEN_GTHAN, ">");
 				case '/':
 					consume();
@@ -183,6 +184,8 @@ namespace xml
 						return EVALUE();
 					else if (::isalnum(c))
 						return ENAME();
+					else if (static_cast<size_t>(p) >= input.length() - 1)
+						c = EOF; //End of input
 					else
 						THROW("ERROR: Invalid character '" << c << "'")
 				}
@@ -314,11 +317,11 @@ int main(int argc, char* argv[])
 			xml::lexer lex(raw);
 			xml::parser par(lex);
 
-			////test lexer only
+			//test lexer only
 			//{
 			//	xml::token t = lex.nextToken();
 
-			//	while (t.type != lists::TOKEN_EOF)
+			//	while (t.type != xml::TOKEN_EOF)
 			//	{
 			//		cout << t.toString() << endl;
 			//		t = lex.nextToken();

@@ -51,16 +51,31 @@ namespace xml
 	//Recognisable tokens
 	enum TokenType
 	{
+		//Invalid token
 		TOKEN_INVALID,
+		//End of file/input
 		TOKEN_EOF,
-		TOKEN_ENAME,   /*Element name */
-		TOKEN_EVALUE,  /*Element value*/
+		//ElementStart name
+		TOKEN_ENAME,
+		//ElementStart value
+		TOKEN_EVALUE,
+		//Less than character
 		TOKEN_LTHAN,
+		//Forward Slash character
 		TOKEN_FSLASH,
-		TOKEN_GTHAN
+		//Greater than character
+		TOKEN_GTHAN,
+		//Double-quote character
+		TOKEN_DQUOTE,
+		//Equals character
+		TOKEN_EQUAL,
+		//Attribute name
+		TOKEN_ANAME,
+		//Attribute value
+		TOKEN_AVALUE
 	};
 
-	const string tokenNames[] = { "n/a", "<EOF>", "ENAME", "EVALUE", "LTHAN", "FSLASH", "GTHAN" };
+	const string tokenNames[] = { "n/a", "<EOF>", "ENAME", "EVALUE", "LTHAN", "FSLASH", "GTHAN", "DQUOTE", "EQUAL", "ANAME", "AVALUE" };
 
 	string getTokenName(const TokenType id)
 	{
@@ -105,15 +120,20 @@ namespace xml
 		{
 		}
 
+
 	private:
+		//Consume a single character and move cursor to next char (if not EOF)
 		void consume()
 		{
 			p++;
-			if (static_cast<size_t>(p) >= input.length()) c = EOF;
-			else c = input[p];
+
+			if (static_cast<size_t>(p) >= input.length())
+				c = EOF;
+			else 
+				c = input[p];
 		}
 
-
+		//Match the given char, consume if successful or throw if fails
 		void match(char x)
 		{
 			if (c == x)
@@ -122,25 +142,26 @@ namespace xml
 				THROW("ERROR: Expecting '" << x << "', Found '" << c << "'")
 		}
 
-
+		//Consume all whitespace
 		void WS()
 		{
 			while (c == ' ' || c == '\t' || c == '\n' || c == '\r')
 				consume();
 		}
 
-
+		//Consume element name
 		token ENAME()
 		{
 			ostringstream ss;
 			do {
 				ss << c;
 				consume();
-			} while (::isalnum(c));
+			} while (::isalnum(c) || c == '_');
 
 			return token(TOKEN_ENAME, ss.str().c_str());
 		}
 
+		//Consume element value
 		token EVALUE()
 		{
 			ostringstream ss;
@@ -152,12 +173,44 @@ namespace xml
 			return token(TOKEN_EVALUE, ss.str().c_str());
 		}
 
+		//Consume attribute name
+		token ANAME()
+		{
+			ostringstream ss;
+			do {
+				ss << c;
+				consume();
+			} while (::isalnum(c) || c == ':');
+
+			return token(TOKEN_ANAME, ss.str().c_str());
+		}
+
+		//Consume attribute value
+		token AVALUE()
+		{
+			ostringstream ss;
+			do {
+				ss << c;
+				consume();
+			} while (c != '\"');
+
+			return token(TOKEN_AVALUE, ss.str().c_str());
+		}
+
+
 	public:
 		///This performs the lexical analysis
 		///Returns result in a token object
 		token nextToken()
 		{
-			static bool valuemode = false;
+			static enum class States
+			{
+				Normal,
+				ElementStart,
+				Attribute,
+				AttributeValue,
+				ElementValue
+			} state = States::Normal;
 
 			while (c != EOF)
 			{
@@ -166,28 +219,69 @@ namespace xml
 				case ' ': case '\t': case '\n': case '\r':
 					WS();
 					continue;
+
 				case '<':
 					consume();
-					valuemode = false;
+					state = States::ElementStart;
 					return token(TOKEN_LTHAN, "<");
+
 				case '>':
 					consume();
 					if(p != input.length() - 1)
-						valuemode = true;
+						state = States::ElementValue;
 					return token(TOKEN_GTHAN, ">");
+
 				case '/':
 					consume();
-					valuemode = false;
+					state = States::Normal;
 					return token(TOKEN_FSLASH, "/");
+
+				case '=':
+					consume();
+					state = States::AttributeValue;
+					return token(TOKEN_EQUAL, "=");
+
+				case '"':
+					consume();
+					return token(TOKEN_DQUOTE, "\"");
+
 				default:
-					if (valuemode)
+					if (state == States::ElementValue)
+					{
 						return EVALUE();
-					else if (::isalnum(c))
-						return ENAME();
+					}
+					else if (::isalnum(c) || c == ':' || c == '_') //TODO recognise understores and other allowable characters (See XML spec.)
+					{
+						if (state == States::ElementStart)
+						{
+							state = States::Attribute;
+							return ENAME();
+						}
+						else if (state == States::Attribute)
+						{
+							state = States::AttributeValue;
+							return ANAME();
+						}
+						else if (state == States::AttributeValue)
+						{
+							state = States::Attribute;
+							return AVALUE();
+						}
+						else
+						{
+							state = States::Normal;
+							return ENAME();
+						}
+					}
 					else if (static_cast<size_t>(p) >= input.length() - 1)
+					{
+						state = States::Normal;
 						c = EOF; //End of input
+					}
 					else
+					{
 						THROW("ERROR: Invalid character '" << c << "'")
+					}
 				}
 			}
 
@@ -203,7 +297,7 @@ namespace xml
 	class parser
 	{
 		lexer& input;
-		const int k; //size of lookahead buffer
+		const int k; //size of lookahead buffer 
 		int p; //index of current buffer element
 		vector<token> lookaheads;
 
@@ -308,26 +402,27 @@ int main(int argc, char* argv[])
 	//test rig..
 #if 1
 	{
-		string raw = util::readAllText("contacts.xml");
+		auto raw = util::readAllText("contacts2.xml");
 		//string raw = util::readAllText("test.xml");
 		cout << raw << endl;
 
 		try
 		{
 			xml::lexer lex(raw);
-			xml::parser par(lex);
+			//xml::parser par(lex);
 
 			//test lexer only
-			//{
-			//	xml::token t = lex.nextToken();
+			{
+				xml::token t = lex.nextToken();
 
-			//	while (t.type != xml::TOKEN_EOF)
-			//	{
-			//		cout << t.toString() << endl;
-			//		t = lex.nextToken();
-			//	}
-			//}
-			par.xmlnode();
+				while (t.type != xml::TOKEN_EOF)
+				{
+					cout << t.toString() << endl; 
+					t = lex.nextToken();
+				}
+			}
+			cout << "finished successfully"<<endl;
+			//par.xmlnode();
 		}
 		catch (const string& s)
 		{

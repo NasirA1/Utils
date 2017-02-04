@@ -21,6 +21,9 @@
   </ItemGroup>
   <ItemGroup>
     <Xml Include="contacts.xml" />
+    <Xml Include="contacts2.xml" />
+    <Xml Include="contacts3.xml" />
+    <Xml Include="contact.xml" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="contacts.txt" />

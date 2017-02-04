@@ -79,7 +79,10 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <Xml Include="contact.xml" />
     <Xml Include="contacts.xml" />
+    <Xml Include="contacts3.xml" />
+    <Xml Include="contacts2.xml" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="contacts.txt" />

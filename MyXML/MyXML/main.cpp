@@ -1,10 +1,13 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
 	A very simple minimalistic XML parser in C++11
-	Currently only able to recognise XML elements (without header/attributes)
+	Currently only able to recognise XML elements and attributes
 
 	Nasir Ahmad
 	2015.11.02
+
+	Last Modified: 2017.02.05
+
 */
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -73,8 +76,10 @@ namespace xml
 		TOKEN_AVALUE
 	};
 
+	//String representations of available token types
 	const string tokenNames[] = { "n/a", "<EOF>", "ENAME", "EVALUE", "LTHAN", "FSLASH", "GTHAN", "DQUOTE", "EQUAL", "ANAME", "AVALUE" };
 
+	//Returns string representation of the given tokentype
 	string getTokenName(const TokenType id)
 	{
 		return tokenNames[static_cast<int>(id)];
@@ -106,16 +111,102 @@ namespace xml
 	///Tokenises input (lexical analysis)
 	class Lexer
 	{
-		string input;
-		int p = 0;
-		char c;
-
 	public:
 		Lexer(const string& in)
 			: input(in)
 			, p(0)
 			, c(in.length() > 0? in[p]: EOF)
 		{
+		}
+
+
+		///This performs the lexical analysis
+		///Returns result in a Token object
+		Token nextToken()
+		{
+			static enum class States
+			{
+				Normal,
+				ElementStart,
+				Attribute,
+				AttributeValue,
+				ElementValue
+			} state = States::Normal;
+
+			while (c != EOF)
+			{
+				switch (c)
+				{
+				case ' ': case '\t': case '\n': case '\r':
+					WS();
+					continue;
+
+				case '<':
+					consume();
+					state = States::ElementStart;
+					return Token(TOKEN_LTHAN, "<");
+
+				case '>':
+					consume();
+					if (p != input.length() - 1)
+						state = States::ElementValue;
+					return Token(TOKEN_GTHAN, ">");
+
+				case '/':
+					consume();
+					state = States::Normal;
+					return Token(TOKEN_FSLASH, "/");
+
+				case '=':
+					consume();
+					state = States::AttributeValue;
+					return Token(TOKEN_EQUAL, "=");
+
+				case '"':
+					consume();
+					return Token(TOKEN_DQUOTE, "\"");
+
+				default:
+					if (state == States::ElementValue)
+					{
+						return EVALUE();
+					}
+					else if (::isalnum(c) || c == ':' || c == '_') //TODO recognise understores and other allowable characters (See XML spec.)
+					{
+						if (state == States::ElementStart)
+						{
+							state = States::Attribute;
+							return ENAME();
+						}
+						else if (state == States::Attribute)
+						{
+							state = States::AttributeValue;
+							return ANAME();
+						}
+						else if (state == States::AttributeValue)
+						{
+							state = States::Attribute;
+							return AVALUE();
+						}
+						else
+						{
+							state = States::Normal;
+							return ENAME();
+						}
+					}
+					else if (static_cast<size_t>(p) >= input.length() - 1)
+					{
+						state = States::Normal;
+						c = EOF; //End of input
+					}
+					else
+					{
+						THROW("ERROR: Invalid character '" << c << "'")
+					}
+				}
+			}
+
+			return Token(TOKEN_EOF, "<EOF>");
 		}
 
 
@@ -196,97 +287,12 @@ namespace xml
 		}
 
 
-	public:
-		///This performs the lexical analysis
-		///Returns result in a Token object
-		Token nextToken()
-		{
-			static enum class States
-			{
-				Normal,
-				ElementStart,
-				Attribute,
-				AttributeValue,
-				ElementValue
-			} state = States::Normal;
-
-			while (c != EOF)
-			{
-				switch (c)
-				{
-				case ' ': case '\t': case '\n': case '\r':
-					WS();
-					continue;
-
-				case '<':
-					consume();
-					state = States::ElementStart;
-					return Token(TOKEN_LTHAN, "<");
-
-				case '>':
-					consume();
-					if(p != input.length() - 1)
-						state = States::ElementValue;
-					return Token(TOKEN_GTHAN, ">");
-
-				case '/':
-					consume();
-					state = States::Normal;
-					return Token(TOKEN_FSLASH, "/");
-
-				case '=':
-					consume();
-					state = States::AttributeValue;
-					return Token(TOKEN_EQUAL, "=");
-
-				case '"':
-					consume();
-					return Token(TOKEN_DQUOTE, "\"");
-
-				default:
-					if (state == States::ElementValue)
-					{
-						return EVALUE();
-					}
-					else if (::isalnum(c) || c == ':' || c == '_') //TODO recognise understores and other allowable characters (See XML spec.)
-					{
-						if (state == States::ElementStart)
-						{
-							state = States::Attribute;
-							return ENAME();
-						}
-						else if (state == States::Attribute)
-						{
-							state = States::AttributeValue;
-							return ANAME();
-						}
-						else if (state == States::AttributeValue)
-						{
-							state = States::Attribute;
-							return AVALUE();
-						}
-						else
-						{
-							state = States::Normal;
-							return ENAME();
-						}
-					}
-					else if (static_cast<size_t>(p) >= input.length() - 1)
-					{
-						state = States::Normal;
-						c = EOF; //End of input
-					}
-					else
-					{
-						THROW("ERROR: Invalid character '" << c << "'")
-					}
-				}
-			}
-
-			return Token(TOKEN_EOF, "<EOF>");
-		}
-
+	private:
+		string input;			//input string
+		int p = 0;				//current position
+		char c;						//current char
 	};
+
 
 
 	///Class 'Recogniser' does the actual parsing after input has been tokenised
@@ -311,8 +317,8 @@ namespace xml
 			}
 		}
 
+		//.dtor
 		~Recogniser() { onMatch = nullptr; }
-
 
 		//Parse the root 
 		void parse() { xmlnode(); }
@@ -326,19 +332,25 @@ namespace xml
 			p = (p + 1) % k;
 		}
 
-		//Return lookahead token (1 or 2)
-		Token LT(int i) { return lookaheads[(p + i - 1) % k]; }
+		//Return token in lookahead buffer (1: current, 2: next)
+		const Token& LT(const int i) const 
+		{ 
+			return lookaheads[(p + i - 1) % k]; 
+		}
 
-		//Return TokenType of LT (1 or 2)
-		TokenType LA(int i) { return LT(i).type; }
+		//Return token-type of LT(i)
+		TokenType LA(const int i) const 
+		{ 
+			return LT(i).type; 
+		}
 
 		//Match the given token-type and call OnMatch callback handler
 		void match(const TokenType x)
 		{
 			if (LA(1) == x) 
 			{
-				//cout << "matched: " << (x == TOKEN_EVALUE? LT(1).toString(): getTokenName(x)) << endl;
-				if (onMatch) onMatch(LT(1));
+				if (onMatch) 
+					onMatch(LT(1));
 				consume();
 			}
 			else
@@ -366,7 +378,8 @@ namespace xml
 			match(TOKEN_ANAME);
 			match(TOKEN_EQUAL);
 			match(TOKEN_DQUOTE);
-			match(TOKEN_AVALUE);
+			try { match(TOKEN_AVALUE); }
+			catch (...) { cout << "\t\tEmpty Attribute\n"; }
 			match(TOKEN_DQUOTE);
 		}
 
@@ -411,20 +424,23 @@ namespace xml
 
 
 	private:
-		Lexer& input;		//Lexer object
-		const int k;		//size of lookahead buffer 
-		int p;					//index of current buffer element
+		Lexer& input;							//Lexer object
+		const int k;							//size of lookahead buffer 
+		int p;										//index of current buffer element
 		vector<Token> lookaheads; //Lookahead buffer
-		OnMatch onMatch;		//Callback called on every match
+		OnMatch onMatch;					//Callback called on every match
 	};
 
 }//end of xml namespace
 
 
 
+
+
 void OnMatch(const xml::Token& token)
 {
-	cout << "matched: " << token.toString() << endl;
+	if(token.type == xml::TOKEN_AVALUE || token.type == xml::TOKEN_EVALUE)
+		cout << "matched: " << token.toString() << endl;
 }
 
 

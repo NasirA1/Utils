@@ -3,9 +3,6 @@
 	A very simple minimalistic XML parser in C++11
 	Currently only able to recognise XML elements (without header/attributes)
 
-	Warning: Be wary of performance implications when back-porting to old C++ (e.g. C++98), as the code relies 
-	heavily on 'Move Semantics'
-
 	Nasir Ahmad
 	2015.11.02
 */
@@ -28,20 +25,21 @@ using namespace std;
 
 
 
+
 namespace util
 {
 	///Reads all text from the given text file and returns it in a string 
 	string readAllText(const char* const filename)
 	{
 		std::ifstream t(filename);
-		std::string str;
+		string str;
 
 		t.seekg(0, std::ios::end);
 		str.reserve(static_cast<unsigned int>(t.tellg()));
 		t.seekg(0, std::ios::beg);
 
 		str.assign((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
-		return str; //C++11: move the string
+		return str; //C++11: move the string out
 	}
 }
 
@@ -83,19 +81,19 @@ namespace xml
 	}
 
 
-	///Represents a lexer token
+	///Represents a Lexer token
 	///A token has a type and a string description
-	struct token
+	struct Token
 	{
 		TokenType type;
 		string text;
 
-		token(const TokenType ty = TOKEN_INVALID, const string& tx = "")
+		Token(const TokenType ty = TOKEN_INVALID, const string& tx = "")
 			: type(ty)
 			, text(tx)
 		{}
 
-		string toString()
+		string toString() const
 		{
 			ostringstream ss;
 			ss << "['" << text << "'," << getTokenName(type) << "]";
@@ -104,16 +102,16 @@ namespace xml
 	};
 
 
-	///lexer class
+	///Lexer class
 	///Tokenises input (lexical analysis)
-	class lexer
+	class Lexer
 	{
 		string input;
 		int p = 0;
 		char c;
 
 	public:
-		lexer(const string& in)
+		Lexer(const string& in)
 			: input(in)
 			, p(0)
 			, c(in.length() > 0? in[p]: EOF)
@@ -150,7 +148,7 @@ namespace xml
 		}
 
 		//Consume element name
-		token ENAME()
+		Token ENAME()
 		{
 			ostringstream ss;
 			do {
@@ -158,11 +156,11 @@ namespace xml
 				consume();
 			} while (::isalnum(c) || c == '_');
 
-			return token(TOKEN_ENAME, ss.str().c_str());
+			return Token(TOKEN_ENAME, ss.str().c_str());
 		}
 
 		//Consume element value
-		token EVALUE()
+		Token EVALUE()
 		{
 			ostringstream ss;
 			do {
@@ -170,11 +168,11 @@ namespace xml
 				consume();
 			} while (c != '<');
 
-			return token(TOKEN_EVALUE, ss.str().c_str());
+			return Token(TOKEN_EVALUE, ss.str().c_str());
 		}
 
 		//Consume attribute name
-		token ANAME()
+		Token ANAME()
 		{
 			ostringstream ss;
 			do {
@@ -182,11 +180,11 @@ namespace xml
 				consume();
 			} while (::isalnum(c) || c == ':');
 
-			return token(TOKEN_ANAME, ss.str().c_str());
+			return Token(TOKEN_ANAME, ss.str().c_str());
 		}
 
 		//Consume attribute value
-		token AVALUE()
+		Token AVALUE()
 		{
 			ostringstream ss;
 			do {
@@ -194,14 +192,14 @@ namespace xml
 				consume();
 			} while (c != '\"');
 
-			return token(TOKEN_AVALUE, ss.str().c_str());
+			return Token(TOKEN_AVALUE, ss.str().c_str());
 		}
 
 
 	public:
 		///This performs the lexical analysis
-		///Returns result in a token object
-		token nextToken()
+		///Returns result in a Token object
+		Token nextToken()
 		{
 			static enum class States
 			{
@@ -223,27 +221,27 @@ namespace xml
 				case '<':
 					consume();
 					state = States::ElementStart;
-					return token(TOKEN_LTHAN, "<");
+					return Token(TOKEN_LTHAN, "<");
 
 				case '>':
 					consume();
 					if(p != input.length() - 1)
 						state = States::ElementValue;
-					return token(TOKEN_GTHAN, ">");
+					return Token(TOKEN_GTHAN, ">");
 
 				case '/':
 					consume();
 					state = States::Normal;
-					return token(TOKEN_FSLASH, "/");
+					return Token(TOKEN_FSLASH, "/");
 
 				case '=':
 					consume();
 					state = States::AttributeValue;
-					return token(TOKEN_EQUAL, "=");
+					return Token(TOKEN_EQUAL, "=");
 
 				case '"':
 					consume();
-					return token(TOKEN_DQUOTE, "\"");
+					return Token(TOKEN_DQUOTE, "\"");
 
 				default:
 					if (state == States::ElementValue)
@@ -285,27 +283,25 @@ namespace xml
 				}
 			}
 
-			return token(TOKEN_EOF, "<EOF>");
+			return Token(TOKEN_EOF, "<EOF>");
 		}
 
 	};
 
 
-	///Class 'parser' does the actual parsing
-	///After input has been tokenised
+	///Class 'Recogniser' does the actual parsing after input has been tokenised
 	///Uses a lookahead circular buffer of size(2) 
-	class parser
+	class Recogniser
 	{
-		lexer& input;
-		const int k; //size of lookahead buffer 
-		int p; //index of current buffer element
-		vector<token> lookaheads;
-
 	public:
-		parser(lexer& in)
+		typedef void(*OnMatch) (const Token&);
+
+		//.ctor
+		Recogniser(Lexer& in, OnMatch onMatchCallback = nullptr)
 			: input(in)
 			, k(2)
 			, p(0)
+			, onMatch(onMatchCallback)
 		{
 			lookaheads.reserve(k);
 			for (int i = 1; i <= k; ++i)
@@ -315,22 +311,34 @@ namespace xml
 			}
 		}
 
+		~Recogniser() { onMatch = nullptr; }
+
+
+		//Parse the root 
+		void parse() { xmlnode(); }
+
+
 	private:
+		//Consume next token
 		void consume()
 		{
 			lookaheads[p] = input.nextToken();
 			p = (p + 1) % k;
 		}
 
-		token LT(int i) { return lookaheads[(p + i - 1) % k]; }
+		//Return lookahead token (1 or 2)
+		Token LT(int i) { return lookaheads[(p + i - 1) % k]; }
+
+		//Return TokenType of LT (1 or 2)
 		TokenType LA(int i) { return LT(i).type; }
 
+		//Match the given token-type and call OnMatch callback handler
 		void match(const TokenType x)
 		{
-			if (LA(1) == x) {
+			if (LA(1) == x) 
+			{
 				//cout << "matched: " << (x == TOKEN_EVALUE? LT(1).toString(): getTokenName(x)) << endl;
-				if (x == TOKEN_EVALUE)
-					cout << "matched: " << LT(1).toString() << endl;
+				if (onMatch) onMatch(LT(1));
 				consume();
 			}
 			else
@@ -339,15 +347,30 @@ namespace xml
 			}
 		}
 
-
+		//Match Start-tag
 		void starttag()
 		{
 			match(TOKEN_LTHAN);
 			match(TOKEN_ENAME);
+
+			//parse attributes (if any)
+			while (LA(1) == TokenType::TOKEN_ANAME)
+				attribute();
+
 			match(TOKEN_GTHAN);
 		}
 
+		//Match attribute
+		void attribute()
+		{
+			match(TOKEN_ANAME);
+			match(TOKEN_EQUAL);
+			match(TOKEN_DQUOTE);
+			match(TOKEN_AVALUE);
+			match(TOKEN_DQUOTE);
+		}
 
+		//Match end-tag
 		void endtag()
 		{
 			match(TOKEN_LTHAN);
@@ -356,7 +379,7 @@ namespace xml
 			match(TOKEN_GTHAN);
 		}
 
-
+		//Match value
 		void value()
 		{
 			if (LA(1) == TOKEN_EVALUE)
@@ -376,25 +399,33 @@ namespace xml
 			}
 		}
 
-	public:
-		///Parsing starts here
-		///on the root element
+		//Match a single XML node
 		void xmlnode()
 		{
 			starttag();
 			value();
 			if (LA(1) != TOKEN_EOF)
 				endtag();
-			/*else
-				cout << "<EOF>" << endl;
-			*/
+			//else cout << "<EOF>" << endl;			
 		}
 
+
+	private:
+		Lexer& input;		//Lexer object
+		const int k;		//size of lookahead buffer 
+		int p;					//index of current buffer element
+		vector<Token> lookaheads; //Lookahead buffer
+		OnMatch onMatch;		//Callback called on every match
 	};
 
 }//end of xml namespace
 
 
+
+void OnMatch(const xml::Token& token)
+{
+	cout << "matched: " << token.toString() << endl;
+}
 
 
 int main(int argc, char* argv[])
@@ -408,21 +439,21 @@ int main(int argc, char* argv[])
 
 		try
 		{
-			xml::lexer lex(raw);
-			//xml::parser par(lex);
+			xml::Lexer lexer(raw);
+			xml::Recogniser parser(lexer, &OnMatch);
 
-			//test lexer only
-			{
-				xml::token t = lex.nextToken();
+			//test Lexer only
+			//{
+			//	xml::Token t = lexer.nextToken();
 
-				while (t.type != xml::TOKEN_EOF)
-				{
-					cout << t.toString() << endl; 
-					t = lex.nextToken();
-				}
-			}
-			cout << "finished successfully"<<endl;
-			//par.xmlnode();
+			//	while (t.type != xml::TOKEN_EOF)
+			//	{
+			//		cout << t.toString() << endl; 
+			//		t = lexer.nextToken();
+			//	}
+			//}
+			parser.parse();
+			cout << "Finished successfully" << endl;
 		}
 		catch (const string& s)
 		{

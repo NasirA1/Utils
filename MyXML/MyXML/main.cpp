@@ -320,8 +320,8 @@ namespace xml
 		//.dtor
 		~Recogniser() { onMatch = nullptr; }
 
-		//Parse the root 
-		void parse() { xmlnode(); }
+		//Parse, starting from the root 
+		void recongise() { xmlnode(); }
 
 
 	private:
@@ -468,7 +468,7 @@ int main(int argc, char* argv[])
 			//		t = lexer.nextToken();
 			//	}
 			//}
-			parser.parse();
+			parser.recongise();
 			cout << "Finished successfully" << endl;
 		}
 		catch (const string& s)

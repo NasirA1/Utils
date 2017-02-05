@@ -431,6 +431,134 @@ namespace xml
 		OnMatch onMatch;					//Callback called on every match
 	};
 
+
+	class Parser
+	{
+	public:
+		//.ctor
+		Parser(Lexer& in)
+			: input(in)
+			, k(2)
+			, p(0)
+		{
+			lookaheads.reserve(k);
+			for (int i = 1; i <= k; ++i)
+			{
+				lookaheads.push_back(input.nextToken());
+				p = (p + 1) % k;
+			}
+		}
+
+		//.dtor
+		~Parser() { }
+
+		//Parse, starting from the root 
+		void parse() { xmlnode(); }
+
+
+	private:
+		//Consume next token
+		void consume()
+		{
+			lookaheads[p] = input.nextToken();
+			p = (p + 1) % k;
+		}
+
+		//Return token in lookahead buffer (1: current, 2: next)
+		const Token& LT(const int i) const
+		{
+			return lookaheads[(p + i - 1) % k];
+		}
+
+		//Return token-type of LT(i)
+		TokenType LA(const int i) const
+		{
+			return LT(i).type;
+		}
+
+		//Match the given token-type and call OnMatch callback handler
+		void match(const TokenType x)
+		{
+			if (LA(1) == x)
+			{
+				consume();
+			}
+			else
+			{
+				THROW("PARSER: Expecting " << getTokenName(x) << " Found: " << LT(1).toString())
+			}
+		}
+
+		//Match Start-tag
+		void starttag()
+		{
+			match(TOKEN_LTHAN);
+			match(TOKEN_ENAME);
+
+			//parse attributes (if any)
+			while (LA(1) == TokenType::TOKEN_ANAME)
+				attribute();
+
+			match(TOKEN_GTHAN);
+		}
+
+		//Match attribute
+		void attribute()
+		{
+			match(TOKEN_ANAME);
+			match(TOKEN_EQUAL);
+			match(TOKEN_DQUOTE);
+			try { match(TOKEN_AVALUE); }
+			catch (...) { cout << "\t\tEmpty Attribute\n"; }
+			match(TOKEN_DQUOTE);
+		}
+
+		//Match end-tag
+		void endtag()
+		{
+			match(TOKEN_LTHAN);
+			match(TOKEN_FSLASH);
+			match(TOKEN_ENAME);
+			match(TOKEN_GTHAN);
+		}
+
+		//Match value
+		void value()
+		{
+			if (LA(1) == TOKEN_EVALUE)
+			{
+				match(TOKEN_EVALUE);
+			}
+			else
+			{
+				//parse children
+				while (LA(1) == TOKEN_LTHAN)
+				{
+					if (LA(2) == TOKEN_FSLASH)
+						endtag();
+					else
+						xmlnode();
+				}
+			}
+		}
+
+		//Match a single XML node
+		void xmlnode()
+		{
+			starttag();
+			value();
+			if (LA(1) != TOKEN_EOF)
+				endtag();
+			//else cout << "<EOF>" << endl;			
+		}
+
+
+	private:
+		Lexer& input;							//Lexer object
+		const int k;							//size of lookahead buffer 
+		int p;										//index of current buffer element
+		vector<Token> lookaheads; //Lookahead buffer
+	};
 }//end of xml namespace
 
 

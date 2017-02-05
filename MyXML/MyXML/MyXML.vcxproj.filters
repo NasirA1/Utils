@@ -28,4 +28,12 @@
   <ItemGroup>
     <Text Include="contacts.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\std_quick_files.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\std_string_helper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

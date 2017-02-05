@@ -87,6 +87,10 @@
   <ItemGroup>
     <Text Include="contacts.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\std_quick_files.h" />
+    <ClInclude Include="..\..\std_string_helper.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

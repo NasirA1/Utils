@@ -16,7 +16,9 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-
+#include <stack>
+#include "..\..\std_quick_files.h"
+#include "..\..\std_string_helper.h"
 
 
 using namespace std;
@@ -26,25 +28,6 @@ using namespace std;
 ///Takens stringstream arguments in the form of: THROW("error: "<<errno<<"desc: ..."<<endl)
 #define THROW(ssargs) {	ostringstream ss; ss << ssargs; throw ss.str(); }
 
-
-
-
-namespace util
-{
-	///Reads all text from the given text file and returns it in a string 
-	string readAllText(const char* const filename)
-	{
-		std::ifstream t(filename);
-		string str;
-
-		t.seekg(0, std::ios::end);
-		str.reserve(static_cast<unsigned int>(t.tellg()));
-		t.seekg(0, std::ios::beg);
-
-		str.assign((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
-		return str; //C++11: move the string out
-	}
-}
 
 
 namespace xml
@@ -303,11 +286,10 @@ namespace xml
 		typedef void(*OnMatch) (const Token&);
 
 		//.ctor
-		Recogniser(Lexer& in, OnMatch onMatchCallback = nullptr)
+		Recogniser(Lexer& in)
 			: input(in)
 			, k(2)
 			, p(0)
-			, onMatch(onMatchCallback)
 		{
 			lookaheads.reserve(k);
 			for (int i = 1; i <= k; ++i)
@@ -318,10 +300,11 @@ namespace xml
 		}
 
 		//.dtor
-		~Recogniser() { onMatch = nullptr; }
+		~Recogniser() { }
 
-		//Parse, starting from the root 
-		void recongise() { xmlnode(); }
+		//Parse, starting from the root
+		//Recognise the XML, result is nothing if successful or std::string exception
+		void parse() { xmlnode(); }
 
 
 	private:
@@ -349,8 +332,8 @@ namespace xml
 		{
 			if (LA(1) == x) 
 			{
-				if (onMatch) 
-					onMatch(LT(1));
+				if (LT(1).type == xml::TOKEN_AVALUE || LT(1).type == xml::TOKEN_EVALUE)
+					cout << "matched: " << LT(1).toString() << endl;
 				consume();
 			}
 			else
@@ -428,148 +411,43 @@ namespace xml
 		const int k;							//size of lookahead buffer 
 		int p;										//index of current buffer element
 		vector<Token> lookaheads; //Lookahead buffer
-		OnMatch onMatch;					//Callback called on every match
 	};
 
 
+	
+	struct XmlAttribute
+	{
+		std::string name;
+		std::string value;
+
+		XmlAttribute(const std::string& nm = "", const std::string& val = "")
+			: name(nm), value(val)
+		{}
+		
+		std::string toString() const { return _F("XmlAttribute(%s,%s)", name.c_str(), value.c_str()); }
+	};
+
+	struct XmlNode
+	{
+		std::string name;
+		std::string value;
+		std::vector<XmlAttribute> attributes;
+		std::vector<XmlNode> children;
+
+		XmlNode(const std::string& nm = "", const std::string& val = "")
+			: name(nm), value(val)
+		{}
+
+		std::string toString() const { return _F("XmlNode(%s,%s)", name.c_str(), value.c_str()); }
+	};
+
+	//TODO
 	class Parser
 	{
-	public:
-		//.ctor
-		Parser(Lexer& in)
-			: input(in)
-			, k(2)
-			, p(0)
-		{
-			lookaheads.reserve(k);
-			for (int i = 1; i <= k; ++i)
-			{
-				lookaheads.push_back(input.nextToken());
-				p = (p + 1) % k;
-			}
-		}
-
-		//.dtor
-		~Parser() { }
-
-		//Parse, starting from the root 
-		void parse() { xmlnode(); }
-
-
-	private:
-		//Consume next token
-		void consume()
-		{
-			lookaheads[p] = input.nextToken();
-			p = (p + 1) % k;
-		}
-
-		//Return token in lookahead buffer (1: current, 2: next)
-		const Token& LT(const int i) const
-		{
-			return lookaheads[(p + i - 1) % k];
-		}
-
-		//Return token-type of LT(i)
-		TokenType LA(const int i) const
-		{
-			return LT(i).type;
-		}
-
-		//Match the given token-type and call OnMatch callback handler
-		void match(const TokenType x)
-		{
-			if (LA(1) == x)
-			{
-				consume();
-			}
-			else
-			{
-				THROW("PARSER: Expecting " << getTokenName(x) << " Found: " << LT(1).toString())
-			}
-		}
-
-		//Match Start-tag
-		void starttag()
-		{
-			match(TOKEN_LTHAN);
-			match(TOKEN_ENAME);
-
-			//parse attributes (if any)
-			while (LA(1) == TokenType::TOKEN_ANAME)
-				attribute();
-
-			match(TOKEN_GTHAN);
-		}
-
-		//Match attribute
-		void attribute()
-		{
-			match(TOKEN_ANAME);
-			match(TOKEN_EQUAL);
-			match(TOKEN_DQUOTE);
-			try { match(TOKEN_AVALUE); }
-			catch (...) { cout << "\t\tEmpty Attribute\n"; }
-			match(TOKEN_DQUOTE);
-		}
-
-		//Match end-tag
-		void endtag()
-		{
-			match(TOKEN_LTHAN);
-			match(TOKEN_FSLASH);
-			match(TOKEN_ENAME);
-			match(TOKEN_GTHAN);
-		}
-
-		//Match value
-		void value()
-		{
-			if (LA(1) == TOKEN_EVALUE)
-			{
-				match(TOKEN_EVALUE);
-			}
-			else
-			{
-				//parse children
-				while (LA(1) == TOKEN_LTHAN)
-				{
-					if (LA(2) == TOKEN_FSLASH)
-						endtag();
-					else
-						xmlnode();
-				}
-			}
-		}
-
-		//Match a single XML node
-		void xmlnode()
-		{
-			starttag();
-			value();
-			if (LA(1) != TOKEN_EOF)
-				endtag();
-			//else cout << "<EOF>" << endl;			
-		}
-
-
-	private:
-		Lexer& input;							//Lexer object
-		const int k;							//size of lookahead buffer 
-		int p;										//index of current buffer element
-		vector<Token> lookaheads; //Lookahead buffer
 	};
+
 }//end of xml namespace
 
-
-
-
-
-void OnMatch(const xml::Token& token)
-{
-	if(token.type == xml::TOKEN_AVALUE || token.type == xml::TOKEN_EVALUE)
-		cout << "matched: " << token.toString() << endl;
-}
 
 
 int main(int argc, char* argv[])
@@ -584,7 +462,7 @@ int main(int argc, char* argv[])
 		try
 		{
 			xml::Lexer lexer(raw);
-			xml::Recogniser parser(lexer, &OnMatch);
+			xml::Recogniser parser(lexer);
 
 			//test Lexer only
 			//{
@@ -596,7 +474,7 @@ int main(int argc, char* argv[])
 			//		t = lexer.nextToken();
 			//	}
 			//}
-			parser.recongise();
+			parser.parse(); 
 			cout << "Finished successfully" << endl;
 		}
 		catch (const string& s)

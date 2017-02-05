@@ -10,6 +10,7 @@ using namespace std;
 namespace util
 {
   
+	//Reads all text from the given text file at once and returns result in a string
   template<typename TChar = char>
   auto readAllText(const basic_string<TChar>& filename)
   {
@@ -17,7 +18,7 @@ namespace util
     basic_string<TChar> str;
 
     file.seekg(0, ios::end);
-    str.reserve(file.tellg());
+    str.reserve(static_cast<size_t>(file.tellg()));
 
     file.seekg(0, ios::beg);
     str.assign((istreambuf_iterator<TChar>(file)), istreambuf_iterator<TChar>());
@@ -26,6 +27,7 @@ namespace util
   }
 
 
+	//Reads all text from the given text file line by line and returns result in a vectror of strings
   template<typename TChar = char>
   auto readAllLines(const basic_string<TChar>& filename)
   {
@@ -43,6 +45,7 @@ namespace util
   }
 
 
+	//Reads all text from the given text file at once and returns result in a string
   template<typename TChar = char>
   auto readAllText(const TChar* const filename)
   {
@@ -50,6 +53,7 @@ namespace util
   }
 
 
+	//Reads all text from the given text file line by line and returns result in a vectror of strings
   template<typename TChar = char>
   auto readAllLines(const TChar* const filename)
   {

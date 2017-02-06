@@ -41,6 +41,36 @@ inline static basic_string<CHARTYPE>& trim(basic_string<CHARTYPE>& s)
 }
 
 
+//Trim the given string from the left and return reference
+//By default SPACE characters are trimmed. Custom characters can be provided in trim_chars parameter.
+template<class CHARTYPE, size_t ARRSIZE = 1u>
+inline static basic_string<CHARTYPE>& triml(basic_string<CHARTYPE>& s, const std::array<char, ARRSIZE>& trim_chars = { ' ' })
+{
+	for (const auto c : trim_chars)
+		s.erase(0, s.find_first_not_of(c));
+	return s;
+}
+
+//Trim the given string from the right and return reference
+//By default SPACE characters are trimmed. Custom characters can be provided in trim_chars parameter.
+template<class CHARTYPE, size_t ARRSIZE = 1u>
+inline static basic_string<CHARTYPE>& trimr(basic_string<CHARTYPE>& s, const std::array<char, ARRSIZE>& trim_chars = { ' ' })
+{
+	for(const auto c : trim_chars)
+		s.erase(s.find_last_not_of(c) + 1, s.size());
+	return s;
+}
+
+//Trim the given string from both sides and return reference
+//By default SPACE characters are trimmed. Custom characters can be provided in trim_chars parameter.
+template<class CHARTYPE, size_t ARRSIZE = 1u>
+inline static basic_string<CHARTYPE>& trim(basic_string<CHARTYPE>& s, const std::array<char, ARRSIZE>& trim_chars = { ' ' })
+{
+	return trimr(triml(s, trim_chars), trim_chars);
+}
+
+
+
 #pragma region format() Helpers
 //Helper function used in format()
 //Base Template for CHARTYPEs

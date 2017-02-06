@@ -69,6 +69,21 @@ inline static basic_string<CHARTYPE>& trim(basic_string<CHARTYPE>& s, const std:
 	return trimr(triml(s, trim_chars), trim_chars);
 }
 
+template<class CHARTYPE = char>
+inline static bool starts_with(const basic_string<CHARTYPE>& subject, const basic_string<CHARTYPE>& prefix)
+{
+	if (prefix.length() > subject.length()) return false;
+	return subject.substr(0, prefix.length()) == prefix;
+}
+
+template<class CHARTYPE = char>
+inline static bool starts_with(const CHARTYPE* const subject, const CHARTYPE* const prefix)
+{
+	const basic_string<CHARTYPE> s_subject(subject);
+	const basic_string<CHARTYPE> s_prefix(prefix);
+	return starts_with(s_subject, s_prefix);
+}
+
 
 
 #pragma region format() Helpers

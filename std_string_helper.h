@@ -140,8 +140,9 @@ inline static auto split(const basic_string<CHARTYPE>& subject, const CHARTYPE d
 
 	for (std::basic_string<CHARTYPE> token; std::getline(iss, token, delim);)
 	{
-		if(!token.empty())
-			output.push_back(std::move(token));
+		if (ignore_empty && token.empty())
+			continue;
+		output.push_back(std::move(token));
 	}
 
 	return output;

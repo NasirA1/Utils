@@ -27,7 +27,7 @@
 			return m_FullName; 
 		}
 		
-		void SetFullName(const std::string value)
+		void SetFullName(const std::string& value)
 		{
 			if(m_FullName != value)
 			{

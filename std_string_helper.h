@@ -47,7 +47,7 @@ inline static basic_string<CHARTYPE>& trim(basic_string<CHARTYPE>& s)
 
 //Trim the given string from the left and return reference
 //By default SPACE characters are trimmed. Custom characters can be provided in trim_chars parameter.
-template<class CHARTYPE, size_t ARRSIZE = 1u>
+template<class CHARTYPE = char, size_t ARRSIZE = 1u>
 inline static basic_string<CHARTYPE>& triml(basic_string<CHARTYPE>& s, const std::array<char, ARRSIZE>& trim_chars = { ' ' })
 {
 	for (const auto c : trim_chars)
@@ -57,17 +57,17 @@ inline static basic_string<CHARTYPE>& triml(basic_string<CHARTYPE>& s, const std
 
 //Trim the given string from the right and return reference
 //By default SPACE characters are trimmed. Custom characters can be provided in trim_chars parameter.
-template<class CHARTYPE, size_t ARRSIZE = 1u>
+template<class CHARTYPE = char, size_t ARRSIZE = 1u>
 inline static basic_string<CHARTYPE>& trimr(basic_string<CHARTYPE>& s, const std::array<char, ARRSIZE>& trim_chars = { ' ' })
 {
-	for(const auto c : trim_chars)
+	for (const auto c : trim_chars)
 		s.erase(s.find_last_not_of(c) + 1, s.size());
 	return s;
 }
 
 //Trim the given string from both sides and return reference
 //By default SPACE characters are trimmed. Custom characters can be provided in trim_chars parameter.
-template<class CHARTYPE, size_t ARRSIZE = 1u>
+template<class CHARTYPE = char, size_t ARRSIZE = 1u>
 inline static basic_string<CHARTYPE>& trim(basic_string<CHARTYPE>& s, const std::array<char, ARRSIZE>& trim_chars = { ' ' })
 {
 	return trimr(triml(s, trim_chars), trim_chars);
@@ -116,7 +116,7 @@ template<class CHARTYPE = char>
 inline static bool ends_with(const basic_string<CHARTYPE>& subject, const CHARTYPE* const suffix)
 {
 	const basic_string<CHARTYPE> s_suffix(suffix);
-	return ends_with(subject, suffix);
+	return ends_with(subject, s_suffix);
 }
 
 

@@ -1,5 +1,5 @@
 #pragma once
-#include <set>
+#include <vector>
 
 //Forward declarations
 struct ISubject;
@@ -13,7 +13,7 @@ struct IEventArgs {};
 //Views inherit from this class and provide GUI update code in function Update()
 struct IObserver
 {
-	virtual void Update(ISubject* sender, IEventArgs* args) = 0;
+	virtual void Update(ISubject* sender, IEventArgs* args = nullptr) = 0;
 };
 
 
@@ -21,10 +21,17 @@ struct IObserver
 struct ISubject
 {
 	//Attach or subscribe
-	void Attach(IObserver* obj) { observers.insert(obj); }
+	void Attach(IObserver* obj) { observers.push_back(obj); }
 
 	//Detach or unsubscribe
-	void Detach(IObserver* obj) { observers.erase(obj); }
+	void Detach(IObserver* obj) 
+	{
+		for (auto it = observers.begin(); it != observers.end();)
+		{
+			if (*it == obj) it = observers.erase(it);
+			else it++;
+		}
+	}
 
 	//Notify all attached observers
 	void Notify(IEventArgs* args = nullptr)
@@ -35,5 +42,5 @@ struct ISubject
 
 
 private:
-	std::set<IObserver*> observers;
+	std::vector<IObserver*> observers;
 };

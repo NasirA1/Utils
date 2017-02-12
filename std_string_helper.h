@@ -253,3 +253,13 @@ static inline std::string wstring_to_string(const std::wstring& wstr)
 	return astr;
 }
 
+
+static inline std::wstring string_to_wstring(const std::string& astr)
+{
+	//use converter (.to_bytes: wstr->str, .from_bytes: str->wstr)
+	using convert_type = std::codecvt_utf8<wchar_t>;
+	std::wstring_convert<convert_type, wchar_t> converter;
+	std::wstring wstr = converter.from_bytes(astr);
+	return wstr;
+}
+

@@ -129,7 +129,7 @@ inline static basic_string<CHARTYPE>& trim(basic_string<CHARTYPE>& s)
 //Trim the given string from the left and return reference
 //By default SPACE characters are trimmed. Custom characters can be provided in trim_chars parameter.
 template<class CHARTYPE = char, size_t ARRSIZE = 1u>
-inline static basic_string<CHARTYPE>& triml(basic_string<CHARTYPE>& s, const std::array<char, ARRSIZE>& trim_chars = { ' ' })
+inline static basic_string<CHARTYPE>& triml(basic_string<CHARTYPE>& s, const std::array<CHARTYPE, ARRSIZE>& trim_chars = { _T(' ') })
 {
 	for (const auto c : trim_chars)
 		s.erase(0, s.find_first_not_of(c));
@@ -139,7 +139,7 @@ inline static basic_string<CHARTYPE>& triml(basic_string<CHARTYPE>& s, const std
 //Trim the given string from the right and return reference
 //By default SPACE characters are trimmed. Custom characters can be provided in trim_chars parameter.
 template<class CHARTYPE = char, size_t ARRSIZE = 1u>
-inline static basic_string<CHARTYPE>& trimr(basic_string<CHARTYPE>& s, const std::array<char, ARRSIZE>& trim_chars = { ' ' })
+inline static basic_string<CHARTYPE>& trimr(basic_string<CHARTYPE>& s, const std::array<CHARTYPE, ARRSIZE>& trim_chars = { _T(' ') })
 {
 	for (const auto c : trim_chars)
 		s.erase(s.find_last_not_of(c) + 1, s.size());
@@ -149,7 +149,7 @@ inline static basic_string<CHARTYPE>& trimr(basic_string<CHARTYPE>& s, const std
 //Trim the given string from both sides and return reference
 //By default SPACE characters are trimmed. Custom characters can be provided in trim_chars parameter.
 template<class CHARTYPE = char, size_t ARRSIZE = 1u>
-inline static basic_string<CHARTYPE>& trim(basic_string<CHARTYPE>& s, const std::array<char, ARRSIZE>& trim_chars = { ' ' })
+inline static basic_string<CHARTYPE>& trim(basic_string<CHARTYPE>& s, const std::array<CHARTYPE, ARRSIZE>& trim_chars = { _T(' ') })
 {
 	return trimr(triml(s, trim_chars), trim_chars);
 }
@@ -227,6 +227,20 @@ inline static auto split(const basic_string<CHARTYPE>& subject, const CHARTYPE d
 	}
 
 	return output;
+}
+
+
+template<class CHARTYPE = char, size_t ARRSIZE = 1>
+inline static auto join(const std::vector<std::basic_string<CHARTYPE>>& tokens, const CHARTYPE delim = '\n')
+{
+	std::basic_ostringstream<CHARTYPE> oss;
+
+	for (auto i = 0u; i < tokens.size(); ++i)
+	{
+		oss << tokens[i] << delim;
+	}
+
+	return oss.str();
 }
 
 

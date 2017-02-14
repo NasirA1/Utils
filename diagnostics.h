@@ -14,7 +14,9 @@ struct scope_timer_t
 	scope_timer_t(const char* const label = nullptr) 
 		: label_(label)
 		, start_(chrono::steady_clock::now()) 
-	{}
+	{
+		//SCOPE_TIMER_T_TRACE("%s\n", label_);
+	}
 
 	~scope_timer_t()
 	{

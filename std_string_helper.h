@@ -131,8 +131,21 @@ inline static basic_string<CHARTYPE>& trim(basic_string<CHARTYPE>& s)
 template<class CHARTYPE = char, size_t ARRSIZE = 1u>
 inline static basic_string<CHARTYPE>& triml(basic_string<CHARTYPE>& s, const std::array<CHARTYPE, ARRSIZE>& trim_chars = { _T(' ') })
 {
-	for (const auto c : trim_chars)
-		s.erase(0, s.find_first_not_of(c));
+	auto pos = 0;
+
+	for (auto ch : s)
+	{
+		if (std::any_of(trim_chars.begin(), trim_chars.end(), [&](auto delim) { return ch == delim; }))
+			pos++;
+		else
+			break;
+	}
+
+	if (pos > 0)
+	{
+		s.erase(0, pos);
+	}
+
 	return s;
 }
 
@@ -141,8 +154,23 @@ inline static basic_string<CHARTYPE>& triml(basic_string<CHARTYPE>& s, const std
 template<class CHARTYPE = char, size_t ARRSIZE = 1u>
 inline static basic_string<CHARTYPE>& trimr(basic_string<CHARTYPE>& s, const std::array<CHARTYPE, ARRSIZE>& trim_chars = { _T(' ') })
 {
-	for (const auto c : trim_chars)
-		s.erase(s.find_last_not_of(c) + 1, s.size());
+	if (s.empty()) return s;
+
+	auto pos = s.length() - 1;
+
+	for (auto i = s.length() - 1; i >= 0; i--)
+	{
+		if (std::any_of(trim_chars.begin(), trim_chars.end(), [&](auto delim) { return s[i] == delim; }))
+			pos--;
+		else
+			break;
+	}
+
+	if (pos < s.length() - 1)
+	{
+		s.erase(pos + 1, s.length() - pos);
+	}
+
 	return s;
 }
 

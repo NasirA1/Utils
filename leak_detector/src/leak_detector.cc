@@ -98,7 +98,7 @@ namespace leak_detector
                                    const size_t size,
                                    const int callstack_start_index = 3)
   {
-    s_print_callstack(callstack_buffer, MAX_PATH, callstack_start_index, "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t");
+    s_print_callstack(callstack_buffer, MAX_PATH, callstack_start_index, "          \t                    \t          \t             \t");
     printf("%X\t%20p\t%s\t %12d\t\t%s\n", tid, ptr, desc, static_cast<int>(size), callstack_buffer);
   }
 
